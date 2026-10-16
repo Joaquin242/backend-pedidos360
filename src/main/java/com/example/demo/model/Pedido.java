@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
-import jakarta.persistence.CascadeType;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -18,7 +17,7 @@ public class Pedido {
     private Long id;
 
     @NotNull
-    @ManyToOne(cascade = CascadeType.ALL)
+    @ManyToOne
     @JoinColumn(name = "cliente_id")
     private Cliente cliente;
 
