@@ -1,9 +1,7 @@
 package com.example.demo.controller;
 
-import com.example.demo.model.Cliente;
 import com.example.demo.model.Pedido;
-import com.example.demo.repository.ClienteRepository;
-import com.example.demo.repository.PedidoRepository;
+import com.example.demo.service.PedidoService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,22 +16,20 @@ import java.util.Map;
 @PreAuthorize("hasAuthority('SCOPE_Pedidos.Access')")
 public class PedidoController {
 
-    private final PedidoRepository pedidoRepository;
-    private final ClienteRepository clienteRepository;
+    private final PedidoService pedidoService;
 
-    public PedidoController(PedidoRepository pedidoRepository, ClienteRepository clienteRepository) {
-        this.pedidoRepository = pedidoRepository;
-        this.clienteRepository = clienteRepository;
+    public PedidoController(PedidoService pedidoService) {
+        this.pedidoService = pedidoService;
     }
 
     @GetMapping
     public List<Pedido> listar() {
-        return pedidoRepository.findAll();
+        return pedidoService.listar();
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Pedido> obtener(@PathVariable Long id) {
-        return pedidoRepository.findById(id)
+        return pedidoService.obtener(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -41,17 +37,7 @@ public class PedidoController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Pedido crear(@Valid @RequestBody Pedido pedido) {
-        pedido.setId(null);
-
-        // si el cliente ya existe (mismo email) se reutiliza, si no se crea
-        Cliente datos = pedido.getCliente();
-        Cliente cliente = clienteRepository.findByEmail(datos.getEmail()).orElseGet(() -> {
-            datos.setId(null);
-            return clienteRepository.save(datos);
-        });
-        pedido.setCliente(cliente);
-
-        return pedidoRepository.save(pedido);
+        return pedidoService.crear(pedido);
     }
 
     @PatchMapping("/{id}/estado")
@@ -60,20 +46,17 @@ public class PedidoController {
         if (estado == null || estado.isBlank()) {
             return ResponseEntity.badRequest().build();
         }
-        return pedidoRepository.findById(id).map(p -> {
-            p.setEstado(estado);
-            return ResponseEntity.ok(pedidoRepository.save(p));
-        }).orElse(ResponseEntity.notFound().build());
+        return pedidoService.cambiarEstado(id, estado)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     // el @PreAuthorize del metodo reemplaza al de la clase, por eso lleva las dos condiciones
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('SCOPE_Pedidos.Access') and hasRole('Admin')")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
-        if (!pedidoRepository.existsById(id)) {
-            return ResponseEntity.notFound().build();
-        }
-        pedidoRepository.deleteById(id);
-        return ResponseEntity.noContent().build();
+        return pedidoService.eliminar(id)
+                ? ResponseEntity.noContent().build()
+                : ResponseEntity.notFound().build();
     }
 }
