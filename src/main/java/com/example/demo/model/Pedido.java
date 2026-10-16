@@ -1,6 +1,7 @@
 package com.example.demo.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -17,6 +18,7 @@ public class Pedido {
     private Long id;
 
     @NotNull
+    @Valid
     @ManyToOne
     @JoinColumn(name = "cliente_id")
     private Cliente cliente;
