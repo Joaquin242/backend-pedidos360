@@ -1,5 +1,6 @@
 package com.example.demo.service;
 
+import com.example.demo.messaging.producer.PedidoEventPublisher;
 import com.example.demo.model.Cliente;
 import com.example.demo.model.Pedido;
 import com.example.demo.repository.ClienteRepository;
@@ -12,17 +13,21 @@ import java.util.Optional;
 
 /**
  * Logica de negocio de pedidos. El controller solo delega aqui.
- * (EP3: aqui se engancha el productor de mensajes RabbitMQ al crear / cambiar estado.)
+ * La mensajeria se usa a traves del publicador; este servicio no conoce colas ni exchanges.
  */
 @Service
 public class PedidoService {
 
     private final PedidoRepository pedidoRepository;
     private final ClienteRepository clienteRepository;
+    private final PedidoEventPublisher eventPublisher;
 
-    public PedidoService(PedidoRepository pedidoRepository, ClienteRepository clienteRepository) {
+    public PedidoService(PedidoRepository pedidoRepository,
+                         ClienteRepository clienteRepository,
+                         PedidoEventPublisher eventPublisher) {
         this.pedidoRepository = pedidoRepository;
         this.clienteRepository = clienteRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional(readOnly = true)
@@ -44,14 +49,18 @@ public class PedidoService {
             return clienteRepository.save(datos);
         });
         pedido.setCliente(cliente);
-        return pedidoRepository.save(pedido);
+        Pedido guardado = pedidoRepository.save(pedido);
+        eventPublisher.publicarPedidoCreado(guardado);
+        return guardado;
     }
 
     @Transactional
     public Optional<Pedido> cambiarEstado(Long id, String estado) {
         return pedidoRepository.findById(id).map(p -> {
             p.setEstado(estado);
-            return pedidoRepository.save(p);
+            Pedido actualizado = pedidoRepository.save(p);
+            eventPublisher.publicarCambioEstado(actualizado);
+            return actualizado;
         });
     }
 
